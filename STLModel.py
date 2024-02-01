@@ -15,14 +15,12 @@ loader.load_stl('your path to an STL here')
 model=loader.model 
 controlMod= None
 
-"""
-Color cube for use in "hello world" openvr apps
-"""
 
 
-class ThreeDKnee(object):
+
+class STLModel(object):
     """
-    Draws a knee
+    Draws a model
     
     """
     
