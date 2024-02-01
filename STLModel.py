@@ -156,15 +156,20 @@ class STLModel(object):
 
             vec3 vertexNormal_modelspace;
             vec3 currpos;
+
             
             mat4 DefaultTranslationMatrix = TranslationMatrix(0.1,1.3,-0.8);
+
+            
             mat4 DefaultRotationMatrix = rotationMatrix(vec3(0,0,1), 3.14) * rotationMatrix(vec3(0,1,0), -1.57);
             
             mat4 UserControlTranslationMatrix = TranslationMatrix(translateDelta.x,translateDelta.y,translateDelta.z);
              
 
 
-
+            // ruoto sull'asse dell'origine
+            // traslo davanti agli occhi dell'utente
+            // Questa matrice model modificata ha le trasformazioni effettuate inversamente a come sarebbero fatte una per una, quindi per comprendere cosa fa al modello 3D va letta da destra a sinistra
             mat4 Modified_Model= UserControlTranslationMatrix * DefaultTranslationMatrix * UserControlRotationMatrix * DefaultRotationMatrix ;
 
             void main() {
@@ -195,10 +200,7 @@ class STLModel(object):
               
               currpos= (Modified_Model * vec4(currpos,1.0)).xyz;
 
-              //ruoto sull'asse dell'origine
-              //currpos= (UserControlRotationMatrix  * vec4(currpos,1.0)).xyz;
-              // traslo davanti agli occhi dell'utente
-              //currpos = (DefaultTranslationMatrix * vec4(currpos,1.0)).xyz;
+            
 
               
 
@@ -277,27 +279,20 @@ class STLModel(object):
         #
         self.vao = glGenVertexArrays(1)
         glBindVertexArray(self.vao)
-        # array_buffer=glGenBuffers(1)
-        # glBindBuffer(GL_ARRAY_BUFFER,array_buffer)
-        # glBufferData(GL_ARRAY_BUFFER, model.meshes[0].num_vertices * sizeof(GLfloat*3), numpy.array(model.meshes[0].vertices), GL_STATIC_DRAW)
 
-        # posAttrib = glGetAttribLocation(program, "position")
-        # glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_TRUE, 0, 0);
-        # glEnableVertexAttribArray(posAttrib);
-        # glEnable(GL_DEPTH_TEST)
-        print("proprietà oggetto mesh in python:")
-        print(dir(model.meshes[0]))
-        print("\n")
-        print("num vertici:")
-        print(model.meshes[0].num_vertices)
-        print("num uv:")
-        print(model.meshes[0].num_uv_components)
-        print("colori:")
-        print(model.meshes[0].colors)
-        print("lunghezza array indici:")
-        print(len(model.meshes[0].indices))
-        print("lunghezza array normali:")
-        print(len(model.meshes[0].normals))
+        #print("proprietà oggetto mesh in python:")
+        #print(dir(model.meshes[0]))
+        #print("\n")
+        #print("num vertici:")
+        #print(model.meshes[0].num_vertices)
+        #print("num uv:")
+        #rint(model.meshes[0].num_uv_components)
+        #print("colori:")
+        #print(model.meshes[0].colors)
+        #print("lunghezza array indici:")
+        #print(len(model.meshes[0].indices))
+        #print("lunghezza array normali:")
+        #print(len(model.meshes[0].normals))
 
 
         #converto i dati di assimp in array numpy 
@@ -322,7 +317,7 @@ class STLModel(object):
                 vertices_and_normals[(index*2)+1][1]=normals_array[index][1]
                 vertices_and_normals[(index*2)+1][2]=normals_array[index][2]
 
-
+        #carico i vertici su Shader storage buffer object
         ssbo=glGenBuffers(1)
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo)
         glBufferData(GL_SHADER_STORAGE_BUFFER, (vertices_array.size -2) * vertices_array.itemsize, vertices_and_normals, GL_STATIC_DRAW)
