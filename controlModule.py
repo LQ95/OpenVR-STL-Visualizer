@@ -1,6 +1,7 @@
 import openvr
 import math
 import numpy
+from MenuStatus import MenuStatus
 class controlInputModule:
 	def __init__(self, pose_array):
 		self.rotationAmount = 0
@@ -43,6 +44,17 @@ class controlInputModule:
 		[0,1,0,0],
 		[0,0,1,0],
 		[0,0,0,1]], dtype = numpy.float32)
+
+		self.paused= False
+		self.left_pause_pressed= False
+		self.right_pause_pressed= False
+
+		#variabili di stato menu
+		self.menuStatus = MenuStatus()
+		self.left_pause_pressed = False
+		self.right_pause_pressed = False
+		self.left_trackpad_pressed = False
+		self.right_trackpad_pressed = False
 
 	def getDelta(self,pos1,pos2):
 		return [pos1[0] - pos2[0], pos1[1] - pos2[1], pos1[2] - pos2[2]]
@@ -155,15 +167,34 @@ class controlInputModule:
 				result, pControllerState = openvr.VRSystem().getControllerState(self.left_controller_id)
 				controller_dict = self.from_controller_state_to_dict(pControllerState)
 				#print(controller_dict)
+				#pausa, quando viene messo in pausa l'osso è spostato in avanti e poi torna indietro
+				if (controller_dict['menu_button'] == True and self.left_pause_pressed == False):
+					self.paused = not self.paused
+					self.left_pause_pressed = True
+					if(self.paused):
+						leftTranslationDelta[2]= leftTranslationDelta[2] -1
+					else:
+						leftTranslationDelta[2]= leftTranslationDelta[2] +1
+				elif(controller_dict['menu_button'] == False):
+					self.left_pause_pressed = False
+
+				#print("pausa:")
+				#print(self.paused)
+
+				
+				#manda in avanti o indietro col trackpad
+				if (controller_dict['trackpad_pressed'] == True and self.paused == False):
+					leftTranslationDelta[0]= controller_dict['trackpad_x']/45
+					leftTranslationDelta[2]= -controller_dict['trackpad_y']/45
 				#gira
-				if (controller_dict['trackpad_touched'] == True):
+				elif (controller_dict['trackpad_touched'] == True and self.paused == False):
 					
 					if (self.last_left_angle== 0):
 						self.last_left_angle=math.asin(controller_dict['trackpad_y'])
 						modified = 1
 					
 					else:
-						print("trackpad sinistro toccato")
+						#print("trackpad sinistro toccato")
 						
 						localRotationAmount = math.asin(controller_dict['trackpad_y']) - self.last_left_angle
 						localRotationAxis = [0,1,0]
@@ -171,7 +202,7 @@ class controlInputModule:
 						self.last_left_angle=math.asin(controller_dict['trackpad_y'])
 						modified = 1
 				#drag
-				if(controller_dict['trigger'] == 1.0 and self.lockedRotation !=2):
+				if(controller_dict['trigger'] == 1.0 and self.lockedRotation !=2 and self.paused == False):
 					print("trigger sinistro toccato. posizione controller sinistro: ")
 					print(self.get_controller_pos(self.left_controller_id))
 					if (self.left_isdragging == False):
@@ -181,15 +212,15 @@ class controlInputModule:
 						self.lockedRotation = 1
 					
 					elif(currentpose.bPoseIsValid):
-						print("posa valida.")
+						#print("posa valida.")
 						leftTranslationDelta = self.getDelta(self.get_controller_pos(self.left_controller_id), self.last_left_pos)
 						
 						self.controllerRotationMatrix=self.get_controller_rotation(self.left_controller_id)
 						numpy.matmul(self.controllerRotationMatrix,self.controllerRotationMatrix_reset,out=self.controllerRotationMatrix)
 						numpy.matmul(self.controllerRotationMatrix_static,self.controllerRotationMatrix,out=self.controllerRotationMatrix)
 						
-						print("delta locale del sinistro:")
-						print(leftTranslationDelta)
+						#print("delta locale del sinistro:")
+						#print(leftTranslationDelta)
 						self.last_left_pos = self.get_controller_pos(self.left_controller_id)
 						self.lockedRotation = 1
 					else:
@@ -197,7 +228,7 @@ class controlInputModule:
 						leftTranslationDelta =[0,0,0]
 				else:
 					self.left_isdragging = False
-					leftTranslationDelta =[0,0,0]
+					#leftTranslationDelta =[0,0,0]
 					if(self.lockedRotation !=2):
 						self.controllerRotationMatrix_static=self.controllerRotationMatrix
 					self.lockedRotation = 0
@@ -208,24 +239,40 @@ class controlInputModule:
 				result, pControllerState = openvr.VRSystem().getControllerState(self.right_controller_id)
 				controller_dict = self.from_controller_state_to_dict(pControllerState)
 				#print(controller_dict)
+				#pausa
+				if (controller_dict['menu_button'] == True and self.right_pause_pressed == False):
+					self.paused = not self.paused
+					self.right_pause_pressed = True
+					if(self.paused):
+						rightTranslationDelta[2]= rightTranslationDelta[2] -1
+					else:
+						rightTranslationDelta[2]= rightTranslationDelta[2] +1
+				elif(controller_dict['menu_button'] == False):
+					self.right_pause_pressed = False
+				#print("pausa:")
+				#print(self.paused)
+				#manda in avanti o indietro col trackpad
+				if (controller_dict['trackpad_pressed'] == True and self.paused == False):
+					rightTranslationDelta[0]= controller_dict['trackpad_x']/45
+					rightTranslationDelta[2]= -controller_dict['trackpad_y']/45
 				#gira
-				if (controller_dict['trackpad_touched'] == True):
+				elif (controller_dict['trackpad_touched'] == True and self.paused == False):
 					
 					if (self.last_right_angle== 0):
 						self.last_right_angle= math.asin(controller_dict['trackpad_y'])
 						modified = 1
 					
 					else:
-						print("trackpad destro toccato. rotationAmount:")
+						#print("trackpad destro toccato. rotationAmount:")
 						localRotationAmount = math.asin(controller_dict['trackpad_y']) - self.last_right_angle
-						print(localRotationAmount)
+						#print(localRotationAmount)
 						localRotationAxis = [0,0,1]
 						numpy.matmul(self.trackpadRotationMatrix,self.get_rotation_matrix(localRotationAxis, localRotationAmount), out = self.trackpadRotationMatrix)
 						self.last_right_angle= math.asin(controller_dict['trackpad_y'])
 						modified = 1
 				#drag
-				if(controller_dict['trigger'] == 1.0 and self.lockedRotation != 1):
-					print("trigger destro toccato.")
+				if(controller_dict['trigger'] == 1.0 and self.lockedRotation != 1 and self.paused == False):
+					#print("trigger destro toccato.")
 					#print(self.get_controller_pos(self.right_controller_id))
 					if (self.right_isdragging == False):
 						self.right_isdragging = True
@@ -234,7 +281,7 @@ class controlInputModule:
 						self.lockedRotation = 2
 
 					elif(currentpose.bPoseIsValid):
-						print("posa valida.")
+						#print("posa valida.")
 						rightTranslationDelta = self.getDelta(self.get_controller_pos(self.right_controller_id),self.last_right_pos)
 						self.last_right_pos=self.get_controller_pos(self.right_controller_id)
 						
@@ -248,7 +295,7 @@ class controlInputModule:
 						rightTranslationDelta =[0,0,0]				
 				else:
 					self.right_isdragging = False
-					rightTranslationDelta =[0,0,0]
+					#rightTranslationDelta =[0,0,0]
 					if (self.lockedRotation !=1):
 						self.controllerRotationMatrix_static=self.controllerRotationMatrix
 					self.lockedRotation = 0
@@ -267,10 +314,101 @@ class controlInputModule:
 		
 		
 		self.translationDelta = self.getFinalDelta(self.translationDelta,localTranslationDelta)
-		print("delta finale:")
-		print(self.translationDelta)           
+		#print("delta finale:")
+		#print(self.translationDelta)           
 
             
     
 
 		return self.translationDelta,self.rotationMatrix
+
+		#funzioni menu
+	def menuControl(self):
+		status=self.menuStatus.menu_dict
+		print("entro nel controllo del menù")
+		#print("stato:")
+		#print(status)
+		status['modified'] = False
+
+
+		if self.left_controller_id is None or self.right_controller_id is None:
+			self.left_controller_id, self.right_controller_id = self.get_controller_ids()
+		#print("ho eseguito controllo sui controller")
+		if self.left_controller_id or self.right_controller_id:
+			#print("almeno un controller è presente")
+			#controller sinistro
+			if self.left_controller_id != None:
+				#print("controller sinistro:")
+				currentpose= self.pose_array[self.left_controller_id]
+				result, pControllerState = openvr.VRSystem().getControllerState(self.left_controller_id)
+				controller_dict = self.from_controller_state_to_dict(pControllerState)
+				#print(controller_dict)
+				if (controller_dict['menu_button'] == True and self.left_menu_enabled == False):
+					status['enabled'] = not status['enabled']
+					print("ho premuto pausa")
+					self.left_menu_enabled = True
+				elif(controller_dict['menu_button'] == False):
+					self.left_menu_enabled = False
+				#print("pausa:")
+				#print(self.paused)
+				#print("menù abilitato:")
+				#print(status['enabled'])
+				if (controller_dict['trackpad_pressed'] == True and self.paused == True and self.left_trackpad_pressed == False):
+					self.left_trackpad_pressed= True
+					status['modified'] = True
+					trackpad_y= controller_dict['trackpad_y'] 
+					trackpad_x= controller_dict['trackpad_x']
+					print("ho premuto e risulta modificato")
+					if (trackpad_y > -0.3 and trackpad_y < 0.5 and trackpad_x> 0.5 ):
+						self.menuStatus.augmentSelectedParam()
+					if (trackpad_y > -0.3 and trackpad_y < 0.5 and trackpad_x< -0.5 ):
+						self.menuStatus.diminishSelectedParam()
+					if (trackpad_y < -0.6 ):
+						self.menuStatus.selectNextParam()
+					if (trackpad_y > 0.6 ):
+						self.menuStatus.selectPrevParam()
+				elif(controller_dict['trackpad_pressed'] == False):
+					self.left_trackpad_pressed= False
+
+
+
+			#controller destro
+			if self.right_controller_id != None:
+				#print("controller destro:")
+				currentpose= self.pose_array[self.right_controller_id]
+				result, pControllerState = openvr.VRSystem().getControllerState(self.right_controller_id)
+				controller_dict = self.from_controller_state_to_dict(pControllerState)
+				#print(controller_dict)
+				if (controller_dict['menu_button'] == True and self.right_menu_enabled == False):
+					status['enabled'] = not status['enabled']
+					self.right_menu_enabled = True
+				elif(controller_dict['menu_button'] == False):
+					self.right_menu_enabled = False
+				#print("pausa:")
+				#print(self.paused)
+				#print("menù abilitato:")
+				#print(status['enabled'])
+				#per modifiare premi a destra e sinistra, decidi griglia di input validi
+				if (controller_dict['trackpad_pressed'] == True and self.paused == True and self.right_trackpad_pressed == False):
+					self.right_trackpad_pressed= True
+					trackpad_y= controller_dict['trackpad_y'] 
+					trackpad_x= controller_dict['trackpad_x']
+					status['modified'] = True
+					print("ho premuto e risulta modificato")
+					if (trackpad_y > -0.3 and trackpad_y < 0.5 and trackpad_x> 0.5 ):
+						self.menuStatus.augmentSelectedParam()
+					if (trackpad_y > -0.3 and trackpad_y < 0.5 and trackpad_x< -0.5 ):
+						self.menuStatus.diminishSelectedParam()
+					if (trackpad_y < -0.6 ):
+						self.menuStatus.selectNextParam()
+					if (trackpad_y> 0.6 ):
+						self.menuStatus.selectPrevParam()
+				elif(controller_dict['trackpad_pressed'] == False):
+					self.right_trackpad_pressed= False
+
+
+
+
+		self.menuStatus.menu_dict = status
+		return status,self.menuStatus.getSelectedParam()
+
