@@ -1,6 +1,5 @@
 
 
-# file color_cube_actor.py
 import numpy
 import ctypes
 import time
