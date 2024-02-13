@@ -3,10 +3,11 @@ from PIL import Image, ImageDraw, ImageFont,ImagePalette
 import math
 class TextureControl(object):
 	def __init__(self,width):
+		#inizializzato con la larghezza, il resto è tutto parametrizzato di conseguenza
 		self.width=width
 		self.height=math.ceil(self.width/1.5)
 		self.fontsize = math.ceil(self.height/15)
-		self.tex= Image.new('L',(self.width,self.height), color= 'black')
+		self.tex= Image.new('RGB',(self.width,self.height), color= 'black')
 		#self.palette=[0,0,0,255,0,0,255,255,255]
 		self.fnt=ImageFont.truetype('arial.ttf', self.fontsize)
 		self.draw= ImageDraw.Draw(self.tex)
@@ -16,9 +17,9 @@ class TextureControl(object):
 		black_grayscale=0
 		white_grayscale=255
 		grey_grayscale=128
-		self.black=black_grayscale
-		self.white=white_grayscale
-		self.green=grey_grayscale
+		self.black=black_RGB
+		self.white=white_RGB
+		self.green=green_RGB
 		self.default_fill_color = self.white
 		self.evidenced_fill_color = self.green
 		self.first_column_x = math.ceil(self.width/36)

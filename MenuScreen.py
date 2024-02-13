@@ -1,10 +1,12 @@
 
 
+# file color_cube_actor.py
 import numpy
 import ctypes
 import time
 import math
-import threading
+import multiprocessing
+import queue
 from textwrap import dedent
 
 from OpenGL.GL import *  # @UnusedWildImport # this comment squelches an IDE warning
@@ -13,8 +15,70 @@ from OpenGL.GL.shaders import compileShader, compileProgram
 from openvr.glframework import shader_string
 from controlModule import controlInputModule
 from TextureControl import TextureControl
+#variabili globali
 controlMod= None
-texControl= None
+menu_width=900
+texControl= TextureControl(menu_width)
+texture_proc_done = multiprocessing.Value(ctypes.c_bool,False)
+texture_proc_generate = multiprocessing.Value(ctypes.c_bool,False)
+processOver= multiprocessing.Value(ctypes.c_bool,False)
+texture_is_loading= multiprocessing.Value(ctypes.c_bool,False)
+#menu_tex= None
+
+shared_queue= multiprocessing.Queue(maxsize=2)
+
+#funzione eseguita dal subprocesso
+def tex_modify_proc_routine(shared_queue, texture_proc_done, texture_proc_generate,processOver,menu_width,texture_is_loading):
+    
+    #setup
+    texControl= TextureControl(menu_width)
+
+    #non bellissimo ma almeno dovrebbe essere indolore
+    menu_dict= {}
+    menu_dict['param1'] = 7
+    menu_dict['param2'] = 6
+    menu_dict['param3'] = 8
+    menu_dict['param4'] = 3
+    menu_dict['oaram5'] = 1
+    texControl.generateTexture(menu_dict,'param1')
+    
+    #ciclo
+    while(1):
+        #print("subprocesso avviato, flag generazione: ")
+        #print(texture_proc_generate.value)
+        #print("subprocesso avviato, flag processOver: ")
+        #print(processOver.value)
+        
+        if(texture_proc_generate.value  == True):
+            print("sono nel sub-processo e sto generando")
+
+            print("dimensione coda prima di prendere quello che ci ha messo l'utente?:")
+            print(shared_queue.qsize())
+            
+            received=shared_queue.get()
+            print("ricevo status")
+            status= received[0]
+            print("ricevo param selezionato")
+            selected_param= received[1]
+            print("status:")
+            print(status)
+            
+            print("parametro selezionato:")
+            print(selected_param)
+
+            texture_is_loading.value = True
+            menu_tex= texControl.modifyTexture(status,selected_param)
+            
+            
+            print("dimensione coda prima di metterci una texture?:")
+            print(shared_queue.qsize())
+
+            shared_queue.put(menu_tex)
+            texture_proc_done.value= True
+            texture_proc_generate.value= False
+
+
+texture_modifying_process = multiprocessing.Process(target=tex_modify_proc_routine, args = (shared_queue, texture_proc_done, texture_proc_generate, processOver,menu_width,texture_is_loading ))
 """
 Menu for the STL Visualizer app
 """
@@ -25,10 +89,15 @@ class MenuScreen(object):
     Draws the menu
 
     """
+    
+
+
+
+    
 
 
     def __init__(self,control_mod):
-        global controlMod,texControl
+        global controlMod,texControl,menu_width
         
         self.shader = 0
         self.vao = None
@@ -43,14 +112,14 @@ class MenuScreen(object):
         self.pixel_buffer= None
         self.mapped_pixel_buffer = None 
         self.tex = None 
-        self.width=350
+        self.width=menu_width
         self.height=math.ceil(self.width/1.57)
         controlMod=control_mod
-        texControl=TextureControl(self.width)
-        self.texture_modifying_thread = threading.Thread()
-
+        
+        
     
     def init_gl(self):
+        global texture_modifying_process
         vertex_shader = compileShader(
             shader_string("""
             
@@ -126,11 +195,11 @@ class MenuScreen(object):
         #print(sizeof(GLfloat))
         
         
-        vertices_array=numpy.array(self.window_vertices)
+        
 
      
 
-        
+   
         glEnable(GL_DEPTH_TEST)   
 
         #inizializzo texture
@@ -141,10 +210,11 @@ class MenuScreen(object):
         self.tex = texControl.generateTexture(controlMod.menuStatus.menu_dict,'param1')
         
         #questa istruzione va commentata se non uso più grayscale
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        #glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         
         glBindTexture(GL_TEXTURE_2D, self.menu_texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,self.width,self.height,0,GL_RED,GL_UNSIGNED_BYTE,self.tex)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,self.width,self.height,0,GL_RGB,GL_FLOAT,self.tex)
+        #glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,self.width,self.height,0,GL_RED,GL_UNSIGNED_BYTE,self.tex)
         #glGenerateMipmap(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
@@ -154,14 +224,19 @@ class MenuScreen(object):
         
 
         self.pixel_buffer=glGenBuffers(1)
+        #glBindBuffer(GL_PIXEL_UNPACK_BUFFER,self.pixel_buffer)
+        #glBufferData(GL_PIXEL_UNPACK_BUFFER,1100*700*16, None, GL_STREAM_DRAW)
+        #glBindBuffer(GL_PIXEL_UNPACK_BUFFER,0)
         
-        
-        #self.texture_modifying_thread.start()
+        texture_modifying_process.start()
+        time.sleep(3)
+
     def display_gl(self, modelview, projection):
+        global shared_queue,menu_tex,texture_proc_generate,texture_proc_done,texture_is_loading
         status,selected_param=controlMod.menuControl()
 
         if(status['enabled']):
-
+            print("menù abilitato")
             glUseProgram(self.shader)
             glUniformMatrix4fv(0, 1, False, projection)
             glUniformMatrix4fv(4, 1, False, modelview)
@@ -173,19 +248,34 @@ class MenuScreen(object):
 
            
 
-            if(status['modified']):
-                
-                self.tex=texControl.modifyTexture(status,selected_param)
-                
+            if(status['modified'] and texture_is_loading.value == False):
+                #sposta questa istruzione dentro un processo separato,rendi la generazione delle texture asincrona
+                #self.tex=texControl.modifyTexture(status,selected_param)
+                print("ho modificato, mando su queue?")
                
-                glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RED,GL_UNSIGNED_BYTE,self.tex)
-        
+                shared_queue.put([status,selected_param])
+                
+                texture_proc_generate.value=True
+                #il sub-processo poi renderà questa ultima variabile falsa quando ha finito
+                
+                
+
+            if(texture_proc_done.value == True):
+                print("il sub-processo ha finito")
+                self.tex=shared_queue.get()
+                texture_is_loading.value = False
+                glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RGB,GL_FLOAT,self.tex)
+                #glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RED,GL_UNSIGNED_BYTE,self.tex)
+                
+                texture_proc_done.value=False
+
+               
 
                 
             
 
 
-            glDrawArrays(GL_TRIANGLE_STRIP,0, 4);
+            glDrawArrays(GL_TRIANGLE_STRIP,0, 4)
             
             error=glGetError()
             if error != 0:
@@ -195,6 +285,9 @@ class MenuScreen(object):
 
     
     def dispose_gl(self):
+        global processOver
+        processOver.value=True
+        texture_modifying_process.join()
         glDeleteProgram(self.shader)
         
         self.shader = 0

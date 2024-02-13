@@ -172,9 +172,9 @@ class controlInputModule:
 					self.paused = not self.paused
 					self.left_pause_pressed = True
 					if(self.paused):
-						leftTranslationDelta[2]= leftTranslationDelta[2] -1
+						leftTranslationDelta[2]= leftTranslationDelta[2] -3
 					else:
-						leftTranslationDelta[2]= leftTranslationDelta[2] +1
+						leftTranslationDelta[2]= leftTranslationDelta[2] +3
 				elif(controller_dict['menu_button'] == False):
 					self.left_pause_pressed = False
 
@@ -244,9 +244,9 @@ class controlInputModule:
 					self.paused = not self.paused
 					self.right_pause_pressed = True
 					if(self.paused):
-						rightTranslationDelta[2]= rightTranslationDelta[2] -1
+						rightTranslationDelta[2]= rightTranslationDelta[2] -3
 					else:
-						rightTranslationDelta[2]= rightTranslationDelta[2] +1
+						rightTranslationDelta[2]= rightTranslationDelta[2] +3
 				elif(controller_dict['menu_button'] == False):
 					self.right_pause_pressed = False
 				#print("pausa:")
