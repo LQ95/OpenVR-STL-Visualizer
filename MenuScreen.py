@@ -213,13 +213,16 @@ class MenuScreen(object):
         #glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         
         glBindTexture(GL_TEXTURE_2D, self.menu_texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,self.width,self.height,0,GL_RGB,GL_FLOAT,self.tex)
+        
+        #il formato interno GL_RGBA8 assieme al leggere ogni dato come un byte senza segno sono necessari per visualizzare correttametne il logo
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,self.width,self.height,0,GL_RGBA,GL_UNSIGNED_BYTE,self.tex)
         #glTexImage2D(GL_TEXTURE_2D, 0, GL_R8,self.width,self.height,0,GL_RED,GL_UNSIGNED_BYTE,self.tex)
-        #glGenerateMipmap(GL_TEXTURE_2D)
+        
+        glGenerateMipmap(GL_TEXTURE_2D)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
         glBindTexture(GL_TEXTURE_2D, 0)
         
 
@@ -264,7 +267,7 @@ class MenuScreen(object):
                 print("il sub-processo ha finito")
                 self.tex=shared_queue.get()
                 texture_is_loading.value = False
-                glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RGB,GL_FLOAT,self.tex)
+                glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RGBA,GL_UNSIGNED_BYTE,self.tex)
                 #glTexSubImage2D(GL_TEXTURE_2D, 0,0,0,self.width,self.height,GL_RED,GL_UNSIGNED_BYTE,self.tex)
                 
                 texture_proc_done.value=False
