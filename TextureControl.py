@@ -7,7 +7,7 @@ class TextureControl(object):
 		self.width=width
 		self.height=math.ceil(self.width/1.5)
 		self.fontsize = math.ceil(self.height/15)
-		self.tex= Image.new('RGB',(self.width,self.height), color= 'black')
+		self.tex= Image.new('RGBA',(self.width,self.height), color= 'black')
 		#self.palette=[0,0,0,255,0,0,255,255,255]
 		self.fnt=ImageFont.truetype('arial.ttf', self.fontsize)
 		self.draw= ImageDraw.Draw(self.tex)
@@ -55,7 +55,14 @@ class TextureControl(object):
 		#Setup per scriverci sopra
 		d = self.draw
 		fnt = self.fnt
-		#tex.paste( self.black, (0, 0, tex.size[0], tex.size[1]))
+		
+		#carica un logo per il menu
+		logo_path = "your_logo_here.png"
+		logo = Image.open(logo_path )
+		logo = logo.resize( (math.ceil(self.width/3.7),math.ceil(self.height/4.6)) )
+		logo_attachment_point_coords = (-math.ceil(self.width/78), -math.ceil(self.height/80))
+		tex.paste(logo, logo_attachment_point_coords)
+		
 		default_fill_color = self.default_fill_color
 		evidenced_fill_color = self.evidenced_fill_color
 		text_fill_color = default_fill_color
